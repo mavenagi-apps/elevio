@@ -1,14 +1,13 @@
 import { MavenAGIClient, MavenAGI } from 'mavenagi';
 const ELEVIO_API_BASE_URL = 'https://api.elev.io/v1';
 
-// Function to call Elev.io API
-async function callElevioApi(path: string, token: string) {
+async function callElevioApi(path: string, key: string, token: string) {
   const endpoint = `${ELEVIO_API_BASE_URL}${path}`;
   const response = await fetch(endpoint, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${token}`,
-      'x-api-key': token, // Make sure the token is retrieved from settings
+      'x-api-key': key,
       'Content-Type': 'application/json',
     },
   });
@@ -21,12 +20,11 @@ async function callElevioApi(path: string, token: string) {
   return response.json();
 }
 
-// Function to process documents for a specific category
-async function processDocsForCategory(mavenAgi, token, knowledgeBaseId) {
+async function processDocsForCategory(mavenAgi, key: string, token: string, knowledgeBaseId: string) {
   const docs = await callElevioApi(`/categories/${knowledgeBaseId}/articles`, token);
 
   for (const doc of docs.articles) {
-    const fullElevioDoc = await callElevioApi(`/articles/${doc.id}`, token);
+    const fullElevioDoc = await callElevioApi(`/articles/${doc.id}`, key, token);
 
     await mavenAgi.knowledge.createKnowledgeDocument({
       knowledgeBaseId,
@@ -44,7 +42,7 @@ async function processDocsForCategory(mavenAgi, token, knowledgeBaseId) {
 export default {
   async preInstall({ settings }) {
     try {
-      await callElevioApi('/categories', settings.token);
+      await callElevioApi('/categories', settings.key, settings.token);
     } catch (error) {
       console.error('Invalid Elev.io token', error);
     }
@@ -57,7 +55,7 @@ export default {
     });
 
     try {
-      const categories = await callElevioApi('/categories', settings.token);
+      const categories = await callElevioApi('/categories', settings.key, settings.token);
 
       for (const category of categories.categories) {
         const knowledgeBase = await mavenAgi.knowledge.createKnowledgeBase({
@@ -67,6 +65,7 @@ export default {
         });
         await processDocsForCategory(
           mavenAgi,
+          settings.key,
           settings.token,
           knowledgeBase.knowledgeBaseId
         );
@@ -89,7 +88,7 @@ export default {
         knowledgeBaseId: knowledgeBaseId,
         type: MavenAGI.KnowledgeBaseVersionType.Full,
       });
-      await processDocsForCategory(mavenAgi, settings.token, knowledgeBaseId);
+      await processDocsForCategory(mavenAgi, settings.key, settings.token, knowledgeBaseId);
     } catch (error) {
       console.error('Error during knowledgeBaseRefresh process:', error);
     }
