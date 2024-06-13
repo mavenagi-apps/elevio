@@ -21,23 +21,38 @@ async function callElevioApi(path: string, key: string, token: string) {
 }
 
 async function processDocsForCategory(mavenAgi, key: string, token: string, knowledgeBaseId: string) {
-  const docs = await callElevioApi(`/categories/${knowledgeBaseId}/articles`, token);
+  let page = 1;
+  let hasMorePages = true;
 
-  for (const doc of docs.articles) {
-    const fullElevioDoc = await callElevioApi(`/articles/${doc.id}`, key, token);
+  while (hasMorePages) {
+    const articlesResponse = await callElevioApi(`/articles?status=published&category_id=${knowledgeBaseId}&page=${page}`, token);
+    const docs = articlesResponse.articles;
 
-    await mavenAgi.knowledge.createKnowledgeDocument({
-      knowledgeBaseId,
-      title: fullElevioDoc.title,
-      content: fullElevioDoc.body,
-      documentId: doc.id,
-    });
+    for (const doc of docs) {
+      const fullElevioDoc = await callElevioApi(`/articles/${doc.id}`, token);
+      const englishTranslation = fullElevioDoc.translations.find(translation => translation.language_id === 'en');
+
+      if (englishTranslation) {
+        await mavenAgi.knowledge.createKnowledgeDocument({
+          knowledgeBaseId,
+          title: englishTranslation.title,
+          content: englishTranslation.body,
+          documentId: doc.id,
+        });
+      } else {
+        console.warn(`No English translation found for article ID: ${doc.id}`);
+      }
+    }
+
+    hasMorePages = page < articlesResponse.total_pages;
+    page++;
   }
 
   await mavenAgi.knowledge.finalizeKnowledgeBaseVersion({
     knowledgeBaseId: knowledgeBaseId,
   });
 }
+
 
 export default {
   async preInstall({ settings }) {
