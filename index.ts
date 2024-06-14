@@ -13,31 +13,49 @@ async function callElevioApi(path: string, key: string, token: string) {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch data from Elev.io API. Endpoint: ${endpoint}`);
+    throw new Error(
+      `Failed to fetch data from Elev.io API. Endpoint: ${endpoint}`
+    );
   }
 
   console.log('Successful Elev.io API call for ' + endpoint);
   return response.json();
 }
 
-async function processDocsForCategory(mavenAgi, key: string, token: string, knowledgeBaseId: string) {
+async function processDocsForCategory(
+  mavenAgi: MavenAGIClient,
+  key: string,
+  token: string,
+  knowledgeBaseId: string
+) {
   let page = 1;
   let hasMorePages = true;
 
   while (hasMorePages) {
-    const articlesResponse = await callElevioApi(`/articles?status=published&category_id=${knowledgeBaseId}&page=${page}`, token);
-    const docs = articlesResponse.articles;
+    const articlesResponse = await callElevioApi(
+      `/articles?status=published&category_id=${knowledgeBaseId}&page=${page}`,
+      key,
+      token
+    );
 
-    for (const doc of docs) {
-      const fullElevioDoc = await callElevioApi(`/articles/${doc.id}`, token);
-      const englishTranslation = fullElevioDoc.translations.find(translation => translation.language_id === 'en');
+    for (const doc of articlesResponse.articles) {
+      const fullElevioDoc = await callElevioApi(
+        `/articles/${doc.id}`,
+        key,
+        token
+      );
+      const englishTranslation = fullElevioDoc.article.translations.find(
+        (translation) =>
+          translation.language_id === 'en' ||
+          translation.language_id === 'en-us'
+      );
 
       if (englishTranslation) {
         await mavenAgi.knowledge.createKnowledgeDocument({
           knowledgeBaseId,
           title: englishTranslation.title,
           content: englishTranslation.body,
-          documentId: doc.id,
+          documentId: `${doc.id}`,
         });
       } else {
         console.warn(`No English translation found for article ID: ${doc.id}`);
@@ -53,13 +71,12 @@ async function processDocsForCategory(mavenAgi, key: string, token: string, know
   });
 }
 
-
 export default {
   async preInstall({ settings }) {
     try {
       await callElevioApi('/categories', settings.key, settings.token);
     } catch (error) {
-      console.error('Invalid Elev.io token', error);
+      console.error('Invalid Elevio token', error);
     }
   },
 
@@ -70,20 +87,28 @@ export default {
     });
 
     try {
-      const categories = await callElevioApi('/categories', settings.key, settings.token);
+      const categories = await callElevioApi(
+        '/categories',
+        settings.key,
+        settings.token
+      );
 
       for (const category of categories.categories) {
-        const knowledgeBase = await mavenAgi.knowledge.createKnowledgeBase({
-          displayName: 'Elevio: ' + category.title,
-          type: MavenAGI.KnowledgeBaseType.Api,
-          knowledgeBaseId: category.id,
-        });
-        await processDocsForCategory(
-          mavenAgi,
-          settings.key,
-          settings.token,
-          knowledgeBase.knowledgeBaseId
-        );
+        const subcategories = category.subcategories;
+        for (const subcategory of subcategories) {
+          const knowledgeBase = await mavenAgi.knowledge.createKnowledgeBase({
+            displayName: `Elevio: ${category.name} - ${subcategory.name}`,
+            type: MavenAGI.KnowledgeBaseType.Api,
+            knowledgeBaseId: `${subcategory.id}`,
+          });
+
+          await processDocsForCategory(
+            mavenAgi,
+            settings.key,
+            settings.token,
+            knowledgeBase.knowledgeBaseId
+          );
+        }
       }
     } catch (error) {
       console.error('Error during postInstall process:', error);
@@ -103,7 +128,12 @@ export default {
         knowledgeBaseId: knowledgeBaseId,
         type: MavenAGI.KnowledgeBaseVersionType.Full,
       });
-      await processDocsForCategory(mavenAgi, settings.key, settings.token, knowledgeBaseId);
+      await processDocsForCategory(
+        mavenAgi,
+        settings.key,
+        settings.token,
+        knowledgeBaseId
+      );
     } catch (error) {
       console.error('Error during knowledgeBaseRefresh process:', error);
     }
