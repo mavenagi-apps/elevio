@@ -73,11 +73,8 @@ async function processDocsForCategory(
 
 export default {
   async preInstall({ settings }) {
-    try {
-      await callElevioApi('/categories', settings.key, settings.token);
-    } catch (error) {
-      console.error('Invalid Elevio token', error);
-    }
+    // Make sure the elevio auth token works
+    await callElevioApi('/categories', settings.key, settings.token);
   },
 
   async postInstall({ organizationId, agentId, settings }) {
@@ -86,32 +83,31 @@ export default {
       agentId,
     });
 
-    try {
-      const categories = await callElevioApi(
-        '/categories',
-        settings.key,
-        settings.token
-      );
+    // Make a maven knowledge base for each elevio subcategory
+    // We're using the elevio subcategory id as the knowledge base id to make Elevio API calls easy
+    const categories = await callElevioApi(
+      '/categories',
+      settings.key,
+      settings.token
+    );
 
-      for (const category of categories.categories) {
-        const subcategories = category.subcategories;
-        for (const subcategory of subcategories) {
-          const knowledgeBase = await mavenAgi.knowledge.createKnowledgeBase({
-            displayName: `Elevio: ${category.name} - ${subcategory.name}`,
-            type: MavenAGI.KnowledgeBaseType.Api,
-            knowledgeBaseId: `${subcategory.id}`,
-          });
+    for (const category of categories.categories) {
+      const subcategories = category.subcategories;
+      for (const subcategory of subcategories) {
+        const knowledgeBase = await mavenAgi.knowledge.createKnowledgeBase({
+          displayName: `Elevio: ${category.name} - ${subcategory.name}`,
+          type: MavenAGI.KnowledgeBaseType.Api,
+          knowledgeBaseId: `${subcategory.id}`,
+        });
 
-          await processDocsForCategory(
-            mavenAgi,
-            settings.key,
-            settings.token,
-            knowledgeBase.knowledgeBaseId
-          );
-        }
+        // Add documents to the knowledge base
+        await processDocsForCategory(
+          mavenAgi,
+          settings.key,
+          settings.token,
+          knowledgeBase.knowledgeBaseId
+        );
       }
-    } catch (error) {
-      console.error('Error during postInstall process:', error);
     }
   },
 
@@ -123,19 +119,16 @@ export default {
   }) {
     const mavenAgi = new MavenAGIClient({ organizationId, agentId });
 
-    try {
-      await mavenAgi.knowledge.createKnowledgeBaseVersion({
-        knowledgeBaseId: knowledgeBaseId,
-        type: MavenAGI.KnowledgeBaseVersionType.Full,
-      });
-      await processDocsForCategory(
-        mavenAgi,
-        settings.key,
-        settings.token,
-        knowledgeBaseId
-      );
-    } catch (error) {
-      console.error('Error during knowledgeBaseRefresh process:', error);
-    }
+    // If we get a refresh request, create a new version for the knowledge base and add documents
+    await mavenAgi.knowledge.createKnowledgeBaseVersion({
+      knowledgeBaseId: knowledgeBaseId,
+      type: MavenAGI.KnowledgeBaseVersionType.Full,
+    });
+    await processDocsForCategory(
+      mavenAgi,
+      settings.key,
+      settings.token,
+      knowledgeBaseId
+    );
   },
 };
