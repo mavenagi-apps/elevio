@@ -51,11 +51,11 @@ async function processDocsForCategory(
       );
 
       if (englishTranslation) {
-        await mavenAgi.knowledge.createKnowledgeDocument({
-          knowledgeBaseId,
+        await mavenAgi.knowledge.createKnowledgeDocument(knowledgeBaseId, {
           title: englishTranslation.title,
           content: englishTranslation.body,
-          documentId: `${doc.id}`,
+          contentType: 'HTML',
+          knowledgeDocumentId: { referenceId: `${doc.id}` },
         });
       } else {
         console.warn(`No English translation found for article ID: ${doc.id}`);
@@ -66,9 +66,7 @@ async function processDocsForCategory(
     page++;
   }
 
-  await mavenAgi.knowledge.finalizeKnowledgeBaseVersion({
-    knowledgeBaseId: knowledgeBaseId,
-  });
+  await mavenAgi.knowledge.finalizeKnowledgeBaseVersion(knowledgeBaseId);
 }
 
 export default {
@@ -94,41 +92,46 @@ export default {
     for (const category of categories.categories) {
       const subcategories = category.subcategories;
       for (const subcategory of subcategories) {
-        const knowledgeBase = await mavenAgi.knowledge.createKnowledgeBase({
-          displayName: `Elevio: ${category.name} - ${subcategory.name}`,
-          type: MavenAGI.KnowledgeBaseType.Api,
-          knowledgeBaseId: `${subcategory.id}`,
-        });
+        const knowledgeBase =
+          await mavenAgi.knowledge.createOrUpdateKnowledgeBase({
+            name: `Elevio: ${category.name} - ${subcategory.name}`,
+            type: MavenAGI.KnowledgeBaseType.Api,
+            knowledgeBaseId: { referenceId: `${subcategory.id}` },
+          });
 
         // Add documents to the knowledge base
         await processDocsForCategory(
           mavenAgi,
           settings.key,
           settings.token,
-          knowledgeBase.knowledgeBaseId
+          knowledgeBase.knowledgeBaseId.referenceId
         );
       }
     }
   },
 
-  async knowledgeBaseRefresh({
+  async knowledgeBaseRefreshed({
     organizationId,
     agentId,
     knowledgeBaseId,
     settings,
   }) {
+    console.log('Refresh request for ' + knowledgeBaseId.referenceId);
+
     const mavenAgi = new MavenAGIClient({ organizationId, agentId });
 
     // If we get a refresh request, create a new version for the knowledge base and add documents
-    await mavenAgi.knowledge.createKnowledgeBaseVersion({
-      knowledgeBaseId: knowledgeBaseId,
-      type: MavenAGI.KnowledgeBaseVersionType.Full,
-    });
+    await mavenAgi.knowledge.createKnowledgeBaseVersion(
+      knowledgeBaseId.referenceId,
+      {
+        type: 'FULL',
+      }
+    );
     await processDocsForCategory(
       mavenAgi,
       settings.key,
       settings.token,
-      knowledgeBaseId
+      knowledgeBaseId.referenceId
     );
   },
 };
