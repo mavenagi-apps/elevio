@@ -130,7 +130,12 @@ export default {
     knowledgeBaseId,
     settings,
   }) {
-    console.log('Refresh request for ' + knowledgeBaseId.referenceId);
+    console.log(
+      'Refresh request for ' +
+        knowledgeBaseId.referenceId +
+        'key' +
+        settings.key
+    );
     const mavenAgi = new MavenAGIClient({ organizationId, agentId });
 
     // If we get a refresh request, create a new version for the knowledge base and add documents
