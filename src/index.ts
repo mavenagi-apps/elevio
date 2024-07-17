@@ -28,6 +28,10 @@ async function processDocsForCategory(
   token: string,
   knowledgeBaseId: string
 ) {
+  await mavenAgi.knowledge.createKnowledgeBaseVersion(knowledgeBaseId, {
+    type: 'FULL',
+  });
+
   let page = 1;
   let hasMorePages = true;
 
@@ -121,12 +125,6 @@ export default {
     const mavenAgi = new MavenAGIClient({ organizationId, agentId });
 
     // If we get a refresh request, create a new version for the knowledge base and add documents
-    await mavenAgi.knowledge.createKnowledgeBaseVersion(
-      knowledgeBaseId.referenceId,
-      {
-        type: 'FULL',
-      }
-    );
     await processDocsForCategory(
       mavenAgi,
       settings.key,
