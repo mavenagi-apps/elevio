@@ -28,10 +28,19 @@ async function processDocsForCategory(
   token: string,
   knowledgeBaseId: string
 ) {
+  // Just in case we had a past failure, finalize any old versions so we can start from scratch
+  try {
+    await mavenAgi.knowledge.finalizeKnowledgeBaseVersion(knowledgeBaseId);
+  } catch (error) {
+    // Ignored
+  }
+
+  // Make a new version
   await mavenAgi.knowledge.createKnowledgeBaseVersion(knowledgeBaseId, {
     type: 'FULL',
   });
 
+  // Add all the elevio docs
   let page = 1;
   let hasMorePages = true;
 
@@ -70,6 +79,7 @@ async function processDocsForCategory(
     page++;
   }
 
+  // Finalize the version
   await mavenAgi.knowledge.finalizeKnowledgeBaseVersion(knowledgeBaseId);
 }
 
@@ -121,7 +131,6 @@ export default {
     settings,
   }) {
     console.log('Refresh request for ' + knowledgeBaseId.referenceId);
-
     const mavenAgi = new MavenAGIClient({ organizationId, agentId });
 
     // If we get a refresh request, create a new version for the knowledge base and add documents
