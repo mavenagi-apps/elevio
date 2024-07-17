@@ -130,19 +130,20 @@ export default {
     knowledgeBaseId,
     settings,
   }) {
+    const agentSettings = settings({ organizationId, agentId });
     console.log(
       'Refresh request for ' +
         knowledgeBaseId.referenceId +
         'key' +
-        settings.key
+        agentSettings.key
     );
     const mavenAgi = new MavenAGIClient({ organizationId, agentId });
 
     // If we get a refresh request, create a new version for the knowledge base and add documents
     await processDocsForCategory(
       mavenAgi,
-      settings.key,
-      settings.token,
+      agentSettings.key,
+      agentSettings.token,
       knowledgeBaseId.referenceId
     );
   },
