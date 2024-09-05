@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "mavenagi": "0.0.0-alpha.12",
+    "mavenagi": "0.0.0-alpha.18",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "next": "14.2.5",
