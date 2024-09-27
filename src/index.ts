@@ -22,31 +22,32 @@ async function callElevioApi(path: string, key: string, token: string) {
   return response.json();
 }
 
-async function processDocsForCategory(
+async function refreshDocumentsFromElevio(
   mavenAgi: MavenAGIClient,
   key: string,
   token: string,
   knowledgeBaseId: string
 ) {
   // Just in case we had a past failure, finalize any old versions so we can start from scratch
+  // TODO(maven): Make the platform more lenient so this isn't necessary
   try {
     await mavenAgi.knowledge.finalizeKnowledgeBaseVersion(knowledgeBaseId);
   } catch (error) {
     // Ignored
   }
 
-  // Make a new version
+  // Make a new kb version
   await mavenAgi.knowledge.createKnowledgeBaseVersion(knowledgeBaseId, {
     type: 'FULL',
   });
 
-  // Add all the elevio docs
+  // Fetch and save all elevio articles to the kb
   let page = 1;
   let hasMorePages = true;
 
   while (hasMorePages) {
     const articlesResponse = await callElevioApi(
-      `/articles?status=published&category_id=${knowledgeBaseId}&page=${page}`,
+      `/articles?status=published&page=${page}`,
       key,
       token
     );
@@ -90,38 +91,20 @@ export default {
   },
 
   async postInstall({ organizationId, agentId, settings }) {
-    const mavenAgi = new MavenAGIClient({
-      organizationId,
-      agentId,
+    const mavenAgi = new MavenAGIClient({ organizationId, agentId });
+
+    // Make one maven knowledge base for elevio
+    await mavenAgi.knowledge.createOrUpdateKnowledgeBase({
+      name: 'Elevio',
+      type: MavenAGI.KnowledgeBaseType.Api,
+      knowledgeBaseId: { referenceId: 'elevio' },
     });
-
-    // Make a maven knowledge base for each elevio subcategory
-    // We're using the elevio subcategory id as the knowledge base id to make Elevio API calls easy
-    const categories = await callElevioApi(
-      '/categories',
+    await refreshDocumentsFromElevio(
+      mavenAgi,
       settings.key,
-      settings.token
+      settings.token,
+      'elevio'
     );
-
-    for (const category of categories.categories) {
-      const subcategories = category.subcategories;
-      for (const subcategory of subcategories) {
-        const knowledgeBase =
-          await mavenAgi.knowledge.createOrUpdateKnowledgeBase({
-            name: `Elevio: ${category.name} - ${subcategory.name}`,
-            type: MavenAGI.KnowledgeBaseType.Api,
-            knowledgeBaseId: { referenceId: `${subcategory.id}` },
-          });
-
-        // Add documents to the knowledge base
-        await processDocsForCategory(
-          mavenAgi,
-          settings.key,
-          settings.token,
-          knowledgeBase.knowledgeBaseId.referenceId
-        );
-      }
-    }
   },
 
   async knowledgeBaseRefreshed({
@@ -134,7 +117,7 @@ export default {
     const mavenAgi = new MavenAGIClient({ organizationId, agentId });
 
     // If we get a refresh request, create a new version for the knowledge base and add documents
-    await processDocsForCategory(
+    await refreshDocumentsFromElevio(
       mavenAgi,
       settings.key,
       settings.token,
