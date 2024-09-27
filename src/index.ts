@@ -76,11 +76,13 @@ async function refreshDocumentsFromElevio(
       }
     }
 
-    hasMorePages = page < articlesResponse.total_pages;
+    console.log('Finished processing page ' + page + '/' + articlesResponse.total_pages);
+    hasMorePages = page < articlesResponse.total_pages;  
     page++;
   }
 
   // Finalize the version
+  console.log('Finished processing all articles');
   await mavenAgi.knowledge.finalizeKnowledgeBaseVersion(knowledgeBaseId);
 }
 
