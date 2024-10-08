@@ -26,8 +26,6 @@ async function callElevioApi(path: string, key: string, token: string) {
   return response.json();
 }
 
-// ... (keep the original functions)
-
 const { preInstall, postInstall, knowledgeBaseRefreshed } = new MavenAGIKnowledgeBaseIntegration({
   preInstallTest: async ({ settings }) => {
     // Make sure the elevio auth token works
