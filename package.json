@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "@mavenagi/knowledge-base-integration": "^0.0.5",
+    "@mavenagi/knowledge-base-integration": "^1.0.1",
     "@vercel/functions": "1.4.0",
     "mavenagi": "^0.0.0-alpha.22",
     "next": "14.2.5",

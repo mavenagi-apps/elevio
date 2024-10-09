@@ -1,5 +1,5 @@
 import { MavenAGIClient, MavenAGI } from 'mavenagi';
-import MavenAGIKnowledgeBaseIntegration from '@mavenagi/knowledge-base-integration';
+import MavenAGIKnowledgeBaseIntegration, { KnowledgeDocumentContentType } from '@mavenagi/knowledge-base-integration';
 import TurndownService from 'turndown';
 import gfm from 'turndown-plugin-gfm';
 
@@ -76,11 +76,12 @@ const { preInstall, postInstall, knowledgeBaseRefreshed } = new MavenAGIKnowledg
 
     console.log('Finished processing all articles');
   },
-  convertDataToMD: (documentBodyPayload: string) => {
+  translateContent: (documentBodyPayload: string) => {
     const turndownService = new TurndownService();
     turndownService.use(gfm);
     return turndownService.turndown(documentBodyPayload);
-  }
+  },
+  contentType: KnowledgeDocumentContentType.Html,
 });
 
 export default {
