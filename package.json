@@ -1,21 +1,18 @@
 {
   "dependencies": {
-    "@mavenagi/knowledge-base-integration": "^1.0.1",
-    "@vercel/functions": "1.4.0",
-    "mavenagi": "1.0.0",
-    "next": "14.2.5",
+    "mavenagi": "0.0.0-alpha.21",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "turndown": "^7.2.0",
-    "turndown-plugin-gfm": "^1.0.2"
+    "next": "14.2.5",
+    "@vercel/functions": "1.4.0"
   },
   "scripts": {
     "build": "next build"
   },
   "devDependencies": {
+    "typescript": "5.5.3",
     "@types/node": "20.14.11",
     "@types/react": "18.3.3",
-    "@types/react-dom": "18.3.0",
-    "typescript": "5.5.3"
+    "@types/react-dom": "18.3.0"
   }
 }
