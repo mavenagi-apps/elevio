@@ -1,0 +1,1 @@
+export { refreshDocumentsFromElevio } from './knowledge';
