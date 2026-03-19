@@ -27,16 +27,15 @@ describe("extractSection", () => {
 });
 
 describe("buildArticleUrl", () => {
-  it("should construct full URL with section, id, and slug", () => {
+  it("should construct URL with section and id only", () => {
     expect(
       buildArticleUrl(
         "https://www.tripadvisorsupport.com/en-US/hc",
         377,
-        "reporting-inaccurate-business-information",
         ["ct_traveler"],
       ),
     ).toBe(
-      "https://www.tripadvisorsupport.com/en-US/hc/traveler/articles/377-reporting-inaccurate-business-information",
+      "https://www.tripadvisorsupport.com/en-US/hc/traveler/articles/377",
     );
   });
 
@@ -45,31 +44,30 @@ describe("buildArticleUrl", () => {
       buildArticleUrl(
         "https://www.tripadvisorsupport.com/en-US/hc",
         402,
-        "updating-my-business-details",
         ["ct_owner"],
       ),
     ).toBe(
-      "https://www.tripadvisorsupport.com/en-US/hc/owner/articles/402-updating-my-business-details",
+      "https://www.tripadvisorsupport.com/en-US/hc/owner/articles/402",
     );
   });
 
   it("should strip trailing slash from helpCenterUrl", () => {
     expect(
-      buildArticleUrl("https://help.example.com/", 456, "test-article", [
+      buildArticleUrl("https://help.example.com/", 456, [
         "ct_traveler",
       ]),
-    ).toBe("https://help.example.com/traveler/articles/456-test-article");
+    ).toBe("https://help.example.com/traveler/articles/456");
   });
 
   it("should return empty string when helpCenterUrl is undefined", () => {
     expect(
-      buildArticleUrl(undefined, 123, "test", ["ct_traveler"]),
+      buildArticleUrl(undefined, 123, ["ct_traveler"]),
     ).toBe("");
   });
 
   it("should return empty string when no section tag exists", () => {
     expect(
-      buildArticleUrl("https://help.example.com", 123, "test", [
+      buildArticleUrl("https://help.example.com", 123, [
         "some-other-tag",
       ]),
     ).toBe("");
@@ -77,7 +75,7 @@ describe("buildArticleUrl", () => {
 
   it("should return empty string when tags are empty", () => {
     expect(
-      buildArticleUrl("https://help.example.com", 123, "test", []),
+      buildArticleUrl("https://help.example.com", 123, []),
     ).toBe("");
   });
 });

@@ -174,7 +174,7 @@ describe("Elevio Knowledge Processor", () => {
           title: "Getting Started",
           contentType: "MARKDOWN",
           language: "en",
-          url: "https://help.example.com/traveler/articles/101-getting-started",
+          url: "https://help.example.com/traveler/articles/101",
           knowledgeDocumentId: { referenceId: "101" },
         }),
       );
