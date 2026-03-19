@@ -152,11 +152,10 @@ export const processFunction = inngest.createFunction(
                 return { id: article.id, status: "skipped" as const };
               }
 
-              // 4. Build article URL (SOLN-63 fix preserved)
+              // 4. Build article URL
               const url = buildArticleUrl(
                 settings.helpCenterUrl,
                 article.id,
-                article.slug,
                 article.tags,
               );
 

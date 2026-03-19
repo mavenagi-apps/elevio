@@ -16,9 +16,9 @@ export function extractSection(tags: string[]): string | undefined {
 /**
  * Construct the public URL for an Elevio help center article.
  *
- * Uses the article's tags to determine the section and the API-provided slug.
+ * Uses the article's tags to determine the section.
  *
- * Pattern: {helpCenterUrl}/{section}/articles/{id}-{slug}
+ * Pattern: {helpCenterUrl}/{section}/articles/{id}
  *
  * The `helpCenterUrl` setting should be the base path up to (but not including)
  * the section. For example: "https://www.tripadvisorsupport.com/en-US/hc"
@@ -28,7 +28,6 @@ export function extractSection(tags: string[]): string | undefined {
 export function buildArticleUrl(
   helpCenterUrl: string | undefined,
   articleId: number,
-  slug: string,
   tags: string[],
 ): string {
   if (!helpCenterUrl) {
@@ -41,5 +40,5 @@ export function buildArticleUrl(
   }
 
   const baseUrl = helpCenterUrl.replace(/\/$/, "");
-  return `${baseUrl}/${section}/articles/${articleId}-${slug}`;
+  return `${baseUrl}/${section}/articles/${articleId}`;
 }
