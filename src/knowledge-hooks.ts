@@ -177,41 +177,46 @@ export async function convertToMavenDocuments(
 ): Promise<ConvertChunkResult> {
   const articles = fetchResult as unknown as ElevioArticleDetail[];
   const { settings } = eventData;
-  const documents: MavenAGI.KnowledgeDocumentRequest[] = [];
 
-  for (const article of articles) {
-    const englishTranslation = article.translations.find((t) =>
-      ENGLISH_LANGUAGE_IDS.includes(
-        t.language_id as (typeof ENGLISH_LANGUAGE_IDS)[number],
-      ),
+  // Filter to English translations first, then convert HTML→Markdown concurrently.
+  // Sequential conversion was a 524-timeout bottleneck — large HTML bodies
+  // can take several seconds each through the knowledge-converter.
+  const articlesWithEnglish = articles
+    .map((article) => {
+      const englishTranslation = article.translations.find((t) =>
+        ENGLISH_LANGUAGE_IDS.includes(
+          t.language_id as (typeof ENGLISH_LANGUAGE_IDS)[number],
+        ),
+      );
+      return englishTranslation ? { article, englishTranslation } : null;
+    })
+    .filter(
+      (item): item is NonNullable<typeof item> => item !== null,
     );
 
-    // Skip articles without English translation
-    if (!englishTranslation) {
-      continue;
-    }
+  // Convert HTML→Markdown concurrently for all English articles
+  const documents: MavenAGI.KnowledgeDocumentRequest[] = await Promise.all(
+    articlesWithEnglish.map(async ({ article, englishTranslation }) => {
+      const [_extractedTitle, markdownContent] = await convert({
+        data: englishTranslation.body,
+      });
 
-    // Convert HTML body to Markdown
-    const [_extractedTitle, markdownContent] = await convert({
-      data: englishTranslation.body,
-    });
+      const url = buildArticleUrl(
+        settings.helpCenterUrl,
+        article.id,
+        article.slug,
+        article.tags,
+      );
 
-    // Build public article URL using API-provided slug and tags (SOLN-63 fix)
-    const url = buildArticleUrl(
-      settings.helpCenterUrl,
-      article.id,
-      article.slug,
-      article.tags,
-    );
-
-    documents.push({
-      knowledgeDocumentId: { referenceId: `${article.id}` },
-      title: englishTranslation.title,
-      content: markdownContent ?? "",
-      contentType: "MARKDOWN",
-      url,
-    });
-  }
+      return {
+        knowledgeDocumentId: { referenceId: `${article.id}` },
+        title: englishTranslation.title,
+        content: markdownContent ?? "",
+        contentType: "MARKDOWN",
+        url,
+      };
+    }),
+  );
 
   return {
     documents,
