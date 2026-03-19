@@ -102,6 +102,7 @@ describe("Elevio Knowledge Base Integration", () => {
         article: {
           id: 101,
           title: "Getting Started",
+          slug: "getting-started",
           translations: [
             {
               id: 1,
@@ -113,7 +114,7 @@ describe("Elevio Knowledge Base Integration", () => {
             },
           ],
           keywords: [],
-          tags: [],
+          tags: ["ct_traveler"],
           created_at: "2024-01-01T00:00:00Z",
           updated_at: "2024-01-01T00:00:00Z",
         },
@@ -124,6 +125,7 @@ describe("Elevio Knowledge Base Integration", () => {
         article: {
           id: 102,
           title: "FAQ",
+          slug: "faq",
           translations: [
             {
               id: 2,
@@ -135,7 +137,7 @@ describe("Elevio Knowledge Base Integration", () => {
             },
           ],
           keywords: [],
-          tags: [],
+          tags: ["ct_owner"],
           created_at: "2024-01-01T00:00:00Z",
           updated_at: "2024-01-01T00:00:00Z",
         },
@@ -182,7 +184,7 @@ describe("Elevio Knowledge Base Integration", () => {
         expect.objectContaining({
           title: "Getting Started",
           contentType: "MARKDOWN",
-          url: "https://help.example.com/articles/101",
+          url: "https://help.example.com/traveler/articles/101-getting-started",
           knowledgeDocumentId: { referenceId: "101" },
         }),
       );
@@ -220,6 +222,7 @@ describe("Elevio Knowledge Base Integration", () => {
       fetchMock.get("https://api.elev.io/v1/articles/201", {
         article: {
           id: 201,
+          slug: "page-1-article",
           translations: [
             {
               id: 1,
@@ -231,7 +234,7 @@ describe("Elevio Knowledge Base Integration", () => {
             },
           ],
           keywords: [],
-          tags: [],
+          tags: ["ct_traveler"],
           created_at: "2024-01-01T00:00:00Z",
           updated_at: "2024-01-01T00:00:00Z",
         },
@@ -240,6 +243,7 @@ describe("Elevio Knowledge Base Integration", () => {
       fetchMock.get("https://api.elev.io/v1/articles/202", {
         article: {
           id: 202,
+          slug: "page-2-article",
           translations: [
             {
               id: 2,
@@ -251,7 +255,7 @@ describe("Elevio Knowledge Base Integration", () => {
             },
           ],
           keywords: [],
-          tags: [],
+          tags: ["ct_owner"],
           created_at: "2024-01-01T00:00:00Z",
           updated_at: "2024-01-01T00:00:00Z",
         },
