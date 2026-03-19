@@ -178,9 +178,7 @@ export async function convertToMavenDocuments(
   const articles = fetchResult as unknown as ElevioArticleDetail[];
   const { settings } = eventData;
 
-  // Filter to English translations first, then convert HTML→Markdown concurrently.
-  // Sequential conversion was a 524-timeout bottleneck — large HTML bodies
-  // can take several seconds each through the knowledge-converter.
+  // Filter to English translations, then convert HTML→Markdown concurrently.
   const articlesWithEnglish = articles
     .map((article) => {
       const englishTranslation = article.translations.find((t) =>
@@ -194,7 +192,7 @@ export async function convertToMavenDocuments(
       (item): item is NonNullable<typeof item> => item !== null,
     );
 
-  // Convert HTML→Markdown concurrently for all English articles
+  // Convert HTML→Markdown for all English articles concurrently
   const documents: MavenAGI.KnowledgeDocumentRequest[] = await Promise.all(
     articlesWithEnglish.map(async ({ article, englishTranslation }) => {
       const [_extractedTitle, markdownContent] = await convert({
