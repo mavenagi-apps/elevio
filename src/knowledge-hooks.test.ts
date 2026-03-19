@@ -341,8 +341,8 @@ describe("fetchData chunking", () => {
   it("should chunk pending articles by ELEVIO_CHUNK_SIZE", async () => {
     const { fetchData } = await import("@/knowledge-hooks");
 
-    // Create 15 pending article summaries (ELEVIO_CHUNK_SIZE is 10)
-    const pending = Array.from({ length: 15 }, (_, i) => ({
+    // Create 12 pending article summaries (ELEVIO_CHUNK_SIZE is 5)
+    const pending = Array.from({ length: 12 }, (_, i) => ({
       id: 300 + i,
       title: `Article ${i}`,
       status: "published",
@@ -351,7 +351,7 @@ describe("fetchData chunking", () => {
       updated_at: "2024-01-01T00:00:00Z",
     }));
 
-    // Mock detail endpoints for all 15 articles
+    // Mock detail endpoints for all 12 articles
     for (const article of pending) {
       fetchMock.get(`https://api.elev.io/v1/articles/${article.id}`, {
         article: {
@@ -376,18 +376,18 @@ describe("fetchData chunking", () => {
       });
     }
 
-    // First chunk: should return 10 articles, leave 5 pending
+    // First chunk: should return 5 articles, leave 7 pending
     const chunk1 = await fetchData(
       { page: 1, totalPages: 1, pendingArticles: pending, done: false },
       mockEventData,
       250,
     );
 
-    expect(chunk1.result).toHaveLength(10);
-    expect(chunk1.updatedMetadata?.pendingArticles).toHaveLength(5);
+    expect(chunk1.result).toHaveLength(5);
+    expect(chunk1.updatedMetadata?.pendingArticles).toHaveLength(7);
     expect(chunk1.updatedMetadata?.done).toBe(false);
 
-    // Second chunk: should return remaining 5 articles
+    // Second chunk: should return 5 articles, leave 2 pending
     const chunk2 = await fetchData(
       chunk1.updatedMetadata!,
       mockEventData,
@@ -395,9 +395,20 @@ describe("fetchData chunking", () => {
     );
 
     expect(chunk2.result).toHaveLength(5);
-    expect(chunk2.updatedMetadata?.pendingArticles).toHaveLength(0);
+    expect(chunk2.updatedMetadata?.pendingArticles).toHaveLength(2);
+    expect(chunk2.updatedMetadata?.done).toBe(false);
+
+    // Third chunk: should return remaining 2 articles
+    const chunk3 = await fetchData(
+      chunk2.updatedMetadata!,
+      mockEventData,
+      250,
+    );
+
+    expect(chunk3.result).toHaveLength(2);
+    expect(chunk3.updatedMetadata?.pendingArticles).toHaveLength(0);
     // Last page and all drained → done
-    expect(chunk2.updatedMetadata?.done).toBe(true);
+    expect(chunk3.updatedMetadata?.done).toBe(true);
   });
 
   it("should fetch next page when pending articles are drained", async () => {
