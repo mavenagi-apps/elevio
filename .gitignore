@@ -1,2 +1,55 @@
-node_modules
-.idea
+# Dependencies
+node_modules/
+
+# Next.js
+.next
+out
+
+# Build
+/build
+
+# Env files & secrets
+.env
+.env*.local
+.npmrc
+
+# Logs
+*.log
+npm-debug.log*
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# TypeScript
+*.tsbuildinfo
+
+# Coverage
+coverage
+*.lcov
+
+# Vercel
+.vercel
+
+# Next.js generated types
+next-env.d.ts
+
+# MavenAGI
+/src/app/mavenagi-cgi
+.secrets
+
+# Encryption keys
+*.pem
+
+# Claude Code
+.claude/settings.local.json
+
+# Scratch
+scratch/

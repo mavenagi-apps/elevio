@@ -1,8 +1,9 @@
+import { z } from "zod";
+
+import { ConnectorSettingsSchema } from "./src/settings";
+
 declare global {
-  interface AppSettings {
-    key: string;
-    token: string
-  }
+  type AppSettings = z.infer<typeof ConnectorSettingsSchema>;
 }
 
 export {};
