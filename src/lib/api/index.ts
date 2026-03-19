@@ -1,4 +1,5 @@
 import { apiLimiter, buildBaseUrl, buildHeaders } from "@/lib/client";
+import { FETCH_TIMEOUT_MS } from "@/lib/constants";
 import type {
   ElevioArticleDetailResponse,
   ElevioArticlesListResponse,
@@ -13,6 +14,7 @@ async function callElevioApi<T>(
     fetch(endpoint, {
       method: "GET",
       headers: buildHeaders(settings),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     }),
   );
 
