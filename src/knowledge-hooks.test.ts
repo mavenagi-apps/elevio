@@ -300,3 +300,150 @@ describe("Elevio Knowledge Base Integration", () => {
     },
   );
 });
+
+describe("fetchData chunking", () => {
+  const mockSettings = {
+    key: "test-api-key",
+    token: "test-token",
+    helpCenterUrl: "https://help.example.com",
+  };
+
+  const mockEventData = {
+    organizationId: "org1",
+    agentId: "agent1",
+    settings: mockSettings,
+  };
+
+  beforeEach(() => {
+    fetchMock.removeRoutes();
+    fetchMock.clearHistory();
+    fetchMock.mockGlobal();
+  });
+
+  afterEach(() => {
+    fetchMock.removeRoutes();
+    fetchMock.clearHistory();
+    fetchMock.unmockGlobal();
+  });
+
+  it("should return empty result when done", async () => {
+    const { fetchData } = await import("@/knowledge-hooks");
+
+    const result = await fetchData(
+      { page: 1, totalPages: 1, pendingArticles: [], done: true },
+      mockEventData,
+      250,
+    );
+
+    expect(result.result).toHaveLength(0);
+  });
+
+  it("should chunk pending articles by ELEVIO_CHUNK_SIZE", async () => {
+    const { fetchData } = await import("@/knowledge-hooks");
+
+    // Create 15 pending article summaries (ELEVIO_CHUNK_SIZE is 10)
+    const pending = Array.from({ length: 15 }, (_, i) => ({
+      id: 300 + i,
+      title: `Article ${i}`,
+      status: "published",
+      category_id: null,
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
+    }));
+
+    // Mock detail endpoints for all 15 articles
+    for (const article of pending) {
+      fetchMock.get(`https://api.elev.io/v1/articles/${article.id}`, {
+        article: {
+          id: article.id,
+          title: article.title,
+          slug: `article-${article.id}`,
+          translations: [
+            {
+              id: article.id,
+              title: article.title,
+              body: "<p>Content</p>",
+              language_id: "en",
+              created_at: "2024-01-01T00:00:00Z",
+              updated_at: "2024-01-01T00:00:00Z",
+            },
+          ],
+          keywords: [],
+          tags: ["ct_traveler"],
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      });
+    }
+
+    // First chunk: should return 10 articles, leave 5 pending
+    const chunk1 = await fetchData(
+      { page: 1, totalPages: 1, pendingArticles: pending, done: false },
+      mockEventData,
+      250,
+    );
+
+    expect(chunk1.result).toHaveLength(10);
+    expect(chunk1.updatedMetadata?.pendingArticles).toHaveLength(5);
+    expect(chunk1.updatedMetadata?.done).toBe(false);
+
+    // Second chunk: should return remaining 5 articles
+    const chunk2 = await fetchData(
+      chunk1.updatedMetadata!,
+      mockEventData,
+      250,
+    );
+
+    expect(chunk2.result).toHaveLength(5);
+    expect(chunk2.updatedMetadata?.pendingArticles).toHaveLength(0);
+    // Last page and all drained → done
+    expect(chunk2.updatedMetadata?.done).toBe(true);
+  });
+
+  it("should fetch next page when pending articles are drained", async () => {
+    const { fetchData } = await import("@/knowledge-hooks");
+
+    // Page 2 articles mock
+    fetchMock.get("https://api.elev.io/v1/articles?status=published&page=2", {
+      articles: [
+        { id: 401, title: "Page 2 Art", status: "published" },
+      ],
+      page_number: 2,
+      total_pages: 2,
+      total_entries: 2,
+    });
+
+    fetchMock.get("https://api.elev.io/v1/articles/401", {
+      article: {
+        id: 401,
+        title: "Page 2 Art",
+        slug: "page-2-art",
+        translations: [
+          {
+            id: 401,
+            title: "Page 2 Art",
+            body: "<p>Content</p>",
+            language_id: "en",
+            created_at: "2024-01-01T00:00:00Z",
+            updated_at: "2024-01-01T00:00:00Z",
+          },
+        ],
+        keywords: [],
+        tags: ["ct_owner"],
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
+      },
+    });
+
+    // Metadata: page 1 drained, more pages exist
+    const result = await fetchData(
+      { page: 1, totalPages: 2, pendingArticles: [], done: false },
+      mockEventData,
+      250,
+    );
+
+    expect(result.result).toHaveLength(1);
+    expect(result.updatedMetadata?.page).toBe(2);
+    expect(result.updatedMetadata?.done).toBe(true);
+  });
+});
