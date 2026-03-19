@@ -44,7 +44,7 @@
     "dotenv": "^17.3.1",
     "fetch-mock": "^12.6.0",
     "husky": "^9.1.7",
-    "lint-staged": "^16.3.3",
+    "lint-staged": "^16.4.0",
     "msw": "2.12.7",
     "oxfmt": "^0.35.0",
     "oxlint": "^1.50.0",
@@ -59,8 +59,7 @@
     "*.{ts,tsx,json,css,md}": "oxfmt --no-error-on-unmatched-pattern"
   },
   "engines": {
-    "node": "^22.11.0",
-    "pnpm": ">=10.3.0"
+    "node": "^22.11.0"
   },
   "packageManager": "pnpm@10.3.0"
 }
