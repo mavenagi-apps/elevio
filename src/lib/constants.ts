@@ -11,11 +11,17 @@ export const ENGLISH_LANGUAGE_IDS = ["en", "en-us"] as const;
 export const API_MAX_CONCURRENT = 5;
 export const API_MIN_TIME_MS = 200;
 
-// Max articles to fetch per chunk (keeps each Inngest step under timeout).
-// Each chunk runs fetchData + convertToMavenDocuments + Maven uploads in a
-// single step.run(), so this must be small enough that the combined work
-// (detail fetches + HTML→MD conversion + uploads) finishes well under 100s.
-export const ELEVIO_CHUNK_SIZE = 5;
+// Articles to process per Inngest step.run() (~4s each step)
+export const ARTICLES_PER_STEP = 25;
+
+// Parallel articles within a mini-batch inside each step
+export const ARTICLES_PER_BATCH = 5;
+
+// Maven API calls per second (100ms between calls)
+export const MAVEN_API_RATE_LIMIT = 10;
+
+// Fire-and-forget wait before returning from finalize step (ms)
+export const FINALIZATION_DELAY_MS = 5000;
 
 // Abort fetch requests that hang longer than this (ms)
 export const FETCH_TIMEOUT_MS = 30_000;

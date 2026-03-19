@@ -1,7 +1,16 @@
-export { GET, POST, PUT } from "@mavenagi/apps-core/knowledge/inngest";
+import { serve } from "inngest/next";
 
-// Extend Vercel serverless function timeout from the default (60s) to 300s.
-// Each Inngest step.run() invocation is a separate HTTP request — without this,
-// steps that include Redis cache operations + Maven API uploads can exceed
-// the default timeout and produce 524 errors from Cloudflare.
+import { inngest } from "@/inngest/client";
+import { processFunction } from "@/inngest/functions/process";
+
 export const maxDuration = 300;
+
+const handler = serve({
+  client: inngest,
+  functions: [processFunction],
+  signingKey: process.env.INNGEST_SIGNING_KEY,
+});
+
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;

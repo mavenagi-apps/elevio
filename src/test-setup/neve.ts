@@ -1,4 +1,4 @@
-import { NeveRecorder } from "@mavenagi/apps-core-dev";
+import { NeveRecorder } from "@mavenagi/neve-recorder";
 import { config } from "dotenv";
 import { setupServer } from "msw/node";
 import type { SetupServerApi } from "msw/node";
