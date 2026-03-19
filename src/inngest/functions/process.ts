@@ -111,6 +111,7 @@ export const processFunction = inngest.createFunction(
 
       await step.run(`process-articles-step-${chunkIndex}`, async () => {
         const rateLimiter = new RateLimiter();
+        const stepSummary = { uploaded: 0, skipped: 0, failed: 0, errors: [] as string[] };
 
         // Process in mini-batches of ARTICLES_PER_BATCH
         for (
@@ -120,7 +121,7 @@ export const processFunction = inngest.createFunction(
         ) {
           const batch = chunk.slice(batchStart, batchStart + ARTICLES_PER_BATCH);
 
-          await Promise.allSettled(
+          const results = await Promise.allSettled(
             batch.map(async (summary) => {
               // 1. Fetch full article detail
               const detailResponse = await fetchArticleById(
@@ -137,13 +138,19 @@ export const processFunction = inngest.createFunction(
               );
 
               if (!englishTranslation) {
-                return; // Skip non-English articles
+                stepSummary.skipped++;
+                return { id: article.id, status: "skipped" as const };
               }
 
               // 3. Convert HTML to Markdown
-              const [_title, markdownContent] = await convert({
-                data: englishTranslation.body,
-              });
+              const [_title, markdownContent] = await convert(
+                englishTranslation.body,
+              );
+
+              if (!markdownContent) {
+                stepSummary.skipped++;
+                return { id: article.id, status: "skipped" as const };
+              }
 
               // 4. Build article URL (SOLN-63 fix preserved)
               const url = buildArticleUrl(
@@ -160,15 +167,28 @@ export const processFunction = inngest.createFunction(
                 {
                   knowledgeDocumentId: { referenceId: `${article.id}` },
                   title: englishTranslation.title,
-                  content: markdownContent ?? "",
+                  content: markdownContent,
                   contentType: "MARKDOWN",
                   language: "en",
                   url,
                 },
               );
+
+              stepSummary.uploaded++;
+              return { id: article.id, status: "uploaded" as const };
             }),
           );
+
+          for (const r of results) {
+            if (r.status === "rejected") {
+              stepSummary.failed++;
+              const errMsg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+              stepSummary.errors.push(errMsg);
+            }
+          }
         }
+
+        return stepSummary;
       });
     }
 
