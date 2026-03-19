@@ -10,3 +10,6 @@ export const ENGLISH_LANGUAGE_IDS = ["en", "en-us"] as const;
 // Rate limiting: conservative defaults for Elevio API
 export const API_MAX_CONCURRENT = 5;
 export const API_MIN_TIME_MS = 200;
+
+// Max articles to fetch per chunk (keeps each Inngest step under timeout)
+export const ELEVIO_CHUNK_SIZE = 10;

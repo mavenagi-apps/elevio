@@ -5,11 +5,15 @@ import { MavenAGI } from "mavenagi";
 
 import { fetchArticleById, fetchArticlesPage } from "@/lib/api";
 import {
+  ELEVIO_CHUNK_SIZE,
   ENGLISH_LANGUAGE_IDS,
   KNOWLEDGE_BASE_ID,
   KNOWLEDGE_BASE_NAME,
 } from "@/lib/constants";
-import type { ElevioArticleDetail } from "@/lib/knowledge";
+import type {
+  ElevioArticleDetail,
+  ElevioArticleSummary,
+} from "@/lib/knowledge";
 import { buildArticleUrl } from "@/lib/url";
 
 // ── Hook execution order ──────────────────────────────────────────────
@@ -17,8 +21,11 @@ import { buildArticleUrl } from "@/lib/url";
 //   → [fetchData → convertToMavenDocuments → getMavenKBId]* (loops until fetchData returns empty)
 
 interface ElevioMetadata {
+  /** Current page in the Elevio articles list API */
   page: number;
   totalPages: number;
+  /** Article summaries from the current page waiting to be fetched in detail */
+  pendingArticles: ElevioArticleSummary[];
   done: boolean;
 }
 
@@ -43,7 +50,8 @@ export async function validateInputs(eventData: any): Promise<void> {
 
 /**
  * Step 2 — Fetch first page to initialize pagination metadata.
- * The returned object is cached in Redis and passed to subsequent hooks.
+ * Stores the first page's article summaries in pendingArticles so
+ * fetchData can drain them in small chunks without re-fetching.
  */
 export async function fetchMetadataAndSetup(
   eventData: any,
@@ -54,6 +62,7 @@ export async function fetchMetadataAndSetup(
   return {
     page: 1,
     totalPages: firstPage.total_pages,
+    pendingArticles: firstPage.articles,
     done: firstPage.total_pages === 0,
   } satisfies ElevioMetadata;
 }
@@ -75,8 +84,15 @@ export function createMavenKBIds(
 }
 
 /**
- * Step 4 (Extract) — Fetch one page of articles with full detail.
- * Called in a loop by the framework. Returns empty result to stop.
+ * Step 4 (Extract) — Fetch a small chunk of articles with full detail.
+ *
+ * Called in a loop by the framework. Each invocation takes at most
+ * ELEVIO_CHUNK_SIZE articles from `pendingArticles`, fetches their
+ * detail (concurrently via the rate limiter), and returns them.
+ * When pendingArticles is drained, fetches the next page. Returns
+ * empty result to signal completion.
+ *
+ * This keeps each Inngest step small enough to avoid 524 timeouts.
  */
 export async function fetchData(
   metadata: Record<string, any>,
@@ -93,23 +109,59 @@ export async function fetchData(
   }
 
   const { settings } = eventData;
-  const articlesResponse = await fetchArticlesPage(settings, meta.page);
+  let { pendingArticles, page, totalPages } = meta;
 
-  // Fetch full detail for each article to get translations with body content
-  const fullArticles: ElevioArticleDetail[] = [];
-  for (const article of articlesResponse.articles) {
-    const detail = await fetchArticleById(settings, article.id);
-    fullArticles.push(detail.article);
+  // If no pending articles, fetch the next page
+  if (pendingArticles.length === 0) {
+    const nextPage = page + 1;
+    if (nextPage > totalPages) {
+      return {
+        result: [],
+        updatedMetadata: { ...meta, done: true } satisfies ElevioMetadata,
+      };
+    }
+
+    const articlesResponse = await fetchArticlesPage(settings, nextPage);
+    pendingArticles = articlesResponse.articles;
+    page = nextPage;
+    totalPages = articlesResponse.total_pages;
+
+    // Edge case: page returned no articles
+    if (pendingArticles.length === 0) {
+      return {
+        result: [],
+        updatedMetadata: {
+          page,
+          totalPages,
+          pendingArticles: [],
+          done: true,
+        } satisfies ElevioMetadata,
+      };
+    }
   }
 
-  const hasMore = meta.page < articlesResponse.total_pages;
+  // Take a small chunk from the pending queue
+  const batch = pendingArticles.slice(0, ELEVIO_CHUNK_SIZE);
+  const remaining = pendingArticles.slice(ELEVIO_CHUNK_SIZE);
+
+  // Fetch full detail concurrently (bounded by Bottleneck rate limiter)
+  const fullArticles = await Promise.all(
+    batch.map(async (article) => {
+      const detail = await fetchArticleById(settings, article.id);
+      return detail.article;
+    }),
+  );
+
+  const allDrained = remaining.length === 0;
+  const noMorePages = page >= totalPages;
 
   return {
     result: fullArticles as unknown as Record<string, any>[],
     updatedMetadata: {
-      page: hasMore ? meta.page + 1 : meta.page,
-      totalPages: articlesResponse.total_pages,
-      done: !hasMore,
+      page,
+      totalPages,
+      pendingArticles: remaining,
+      done: allDrained && noMorePages,
     } satisfies ElevioMetadata,
   };
 }
