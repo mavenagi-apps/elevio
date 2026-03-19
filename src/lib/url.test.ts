@@ -1,57 +1,83 @@
 import { describe, expect, it } from "vitest";
 
-import { buildArticleUrl, slugifyTitle } from "@/lib/url";
+import { buildArticleUrl, extractSection } from "@/lib/url";
 
-describe("slugifyTitle", () => {
-  it("should convert title to kebab-case", () => {
-    expect(slugifyTitle("Getting Started")).toBe("getting-started");
+describe("extractSection", () => {
+  it("should extract section from ct_ prefixed tag", () => {
+    expect(extractSection(["ct_traveler"])).toBe("traveler");
   });
 
-  it("should remove special characters", () => {
-    expect(slugifyTitle("FAQ: Billing & Payments")).toBe(
-      "faq-billing-payments",
+  it("should extract section from ct_owner tag", () => {
+    expect(extractSection(["ct_owner"])).toBe("owner");
+  });
+
+  it("should return first matching section tag", () => {
+    expect(extractSection(["other", "ct_traveler", "ct_owner"])).toBe(
+      "traveler",
     );
   });
 
-  it("should handle empty string", () => {
-    expect(slugifyTitle("")).toBe("");
+  it("should return undefined when no section tag exists", () => {
+    expect(extractSection(["some-tag", "another"])).toBeUndefined();
   });
 
-  it("should collapse multiple spaces and dashes", () => {
-    expect(slugifyTitle("How  to   Use  This")).toBe("how-to-use-this");
-  });
-
-  it("should trim leading and trailing dashes", () => {
-    expect(slugifyTitle(" Hello World ")).toBe("hello-world");
+  it("should return undefined for empty tags", () => {
+    expect(extractSection([])).toBeUndefined();
   });
 });
 
 describe("buildArticleUrl", () => {
-  it("should construct URL from helpCenterUrl and article ID", () => {
+  it("should construct full URL with section, id, and slug", () => {
     expect(
-      buildArticleUrl("https://help.example.com/en", 123, "Getting Started"),
-    ).toBe("https://help.example.com/en/articles/123");
+      buildArticleUrl(
+        "https://www.tripadvisorsupport.com/en-US/hc",
+        377,
+        "reporting-inaccurate-business-information",
+        ["ct_traveler"],
+      ),
+    ).toBe(
+      "https://www.tripadvisorsupport.com/en-US/hc/traveler/articles/377-reporting-inaccurate-business-information",
+    );
+  });
+
+  it("should use ct_owner tag for owner section", () => {
+    expect(
+      buildArticleUrl(
+        "https://www.tripadvisorsupport.com/en-US/hc",
+        402,
+        "updating-my-business-details",
+        ["ct_owner"],
+      ),
+    ).toBe(
+      "https://www.tripadvisorsupport.com/en-US/hc/owner/articles/402-updating-my-business-details",
+    );
   });
 
   it("should strip trailing slash from helpCenterUrl", () => {
-    expect(buildArticleUrl("https://help.example.com/", 456, "Test")).toBe(
-      "https://help.example.com/articles/456",
-    );
+    expect(
+      buildArticleUrl("https://help.example.com/", 456, "test-article", [
+        "ct_traveler",
+      ]),
+    ).toBe("https://help.example.com/traveler/articles/456-test-article");
   });
 
   it("should return empty string when helpCenterUrl is undefined", () => {
-    expect(buildArticleUrl(undefined, 123, "Test")).toBe("");
+    expect(
+      buildArticleUrl(undefined, 123, "test", ["ct_traveler"]),
+    ).toBe("");
   });
 
-  it("should work with nested help center base paths", () => {
+  it("should return empty string when no section tag exists", () => {
     expect(
-      buildArticleUrl(
-        "https://www.tripadvisorsupport.com/en-US/hc/traveler",
-        377,
-        "Reporting inaccurate business information",
-      ),
-    ).toBe(
-      "https://www.tripadvisorsupport.com/en-US/hc/traveler/articles/377",
-    );
+      buildArticleUrl("https://help.example.com", 123, "test", [
+        "some-other-tag",
+      ]),
+    ).toBe("");
+  });
+
+  it("should return empty string when tags are empty", () => {
+    expect(
+      buildArticleUrl("https://help.example.com", 123, "test", []),
+    ).toBe("");
   });
 });

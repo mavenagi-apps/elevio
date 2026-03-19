@@ -144,11 +144,12 @@ export async function convertToMavenDocuments(
       data: englishTranslation.body,
     });
 
-    // Build public article URL (SOLN-63 fix)
+    // Build public article URL using API-provided slug and tags (SOLN-63 fix)
     const url = buildArticleUrl(
       settings.helpCenterUrl,
       article.id,
-      englishTranslation.title,
+      article.slug,
+      article.tags,
     );
 
     documents.push({

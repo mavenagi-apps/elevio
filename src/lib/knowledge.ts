@@ -23,6 +23,7 @@ export interface ElevioArticleDetailResponse {
 export interface ElevioArticleDetail {
   id: number;
   title: string;
+  slug: string;
   status: string;
   category_id: number | null;
   translations: ElevioTranslation[];

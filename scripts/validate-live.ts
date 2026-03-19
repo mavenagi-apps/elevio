@@ -30,7 +30,7 @@ const settings = {
   token,
   helpCenterUrl:
     process.env.ELEVIO_HELP_CENTER_URL ??
-    "https://www.tripadvisorsupport.com/en-US/hc/traveler",
+    "https://www.tripadvisorsupport.com/en-US/hc",
 };
 
 const headers = {
@@ -41,14 +41,23 @@ const headers = {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+/** Extract section from ct_ prefixed tags (e.g. ct_traveler → traveler) */
+function extractSection(tags: string[]): string | undefined {
+  const tag = tags.find((t) => t.startsWith("ct_"));
+  return tag?.slice(3);
+}
+
 function buildArticleUrl(
   helpCenterUrl: string | undefined,
   articleId: number,
-  _title: string,
+  slug: string,
+  tags: string[],
 ): string {
   if (!helpCenterUrl) return "";
+  const section = extractSection(tags);
+  if (!section) return "";
   const baseUrl = helpCenterUrl.replace(/\/$/, "");
-  return `${baseUrl}/articles/${articleId}`;
+  return `${baseUrl}/${section}/articles/${articleId}-${slug}`;
 }
 
 const ENGLISH_LANGUAGE_IDS = ["en", "en-us"];
@@ -116,6 +125,7 @@ interface ArticleDetail {
   article: {
     id: number;
     title: string;
+    slug: string;
     translations: {
       id: number;
       title: string;
@@ -190,17 +200,24 @@ async function testConversion(htmlBody: string) {
 
 // ── Step 5: URL Construction ─────────────────────────────────────────
 
-function testUrlConstruction(articleId: number, title: string) {
+function testUrlConstruction(
+  articleId: number,
+  slug: string,
+  tags: string[],
+) {
   console.log("\n─── Step 5: URL Construction (SOLN-63) ───");
-  const url = buildArticleUrl(settings.helpCenterUrl, articleId, title);
+  info("Slug", slug);
+  info("Tags", tags.join(", ") || "(none)");
+
+  const url = buildArticleUrl(settings.helpCenterUrl, articleId, slug, tags);
   if (url) {
     passed("buildArticleUrl", url);
   } else {
-    failed("buildArticleUrl", "returned empty string");
+    failed("buildArticleUrl", "returned empty string (no ct_ tag?)");
   }
 
   // Also test without helpCenterUrl
-  const noUrl = buildArticleUrl(undefined, articleId, title);
+  const noUrl = buildArticleUrl(undefined, articleId, slug, tags);
   if (noUrl === "") {
     passed("No helpCenterUrl", "correctly returns empty string");
   } else {
@@ -257,14 +274,22 @@ async function main() {
       const alt = await fetchAndValidateArticle(list.articles[i].id);
       if (alt) {
         const md = await testConversion(alt.english.body);
-        const url = testUrlConstruction(alt.article.id, alt.english.title);
+        const url = testUrlConstruction(
+          alt.article.id,
+          alt.article.slug,
+          alt.article.tags,
+        );
         showDocumentShape(alt.article.id, alt.english.title, md, url);
         break;
       }
     }
   } else {
     const md = await testConversion(detail.english.body);
-    const url = testUrlConstruction(detail.article.id, detail.english.title);
+    const url = testUrlConstruction(
+      detail.article.id,
+      detail.article.slug,
+      detail.article.tags,
+    );
     showDocumentShape(detail.article.id, detail.english.title, md, url);
   }
 
@@ -273,7 +298,7 @@ async function main() {
     `  Total articles: ${list.total_entries} across ${list.total_pages} pages`,
   );
   console.log(
-    `  Help center URL pattern: ${settings.helpCenterUrl}/en/articles/{id}-{slug}`,
+    `  Help center URL pattern: ${settings.helpCenterUrl}/{section}/articles/{id}-{slug}`,
   );
   console.log("  Done.\n");
 }

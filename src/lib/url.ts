@@ -1,34 +1,45 @@
-/** Slugify a title for URL construction */
-export function slugifyTitle(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+/** Prefix used on Elevio tags that map to help center URL sections */
+const TAG_SECTION_PREFIX = "ct_";
+
+/**
+ * Extract the help center section from an article's tags.
+ *
+ * Elevio tags like "ct_traveler" or "ct_owner" map to URL sections
+ * (e.g. /traveler, /owner). Returns the first matching section,
+ * or undefined if no section tag is present.
+ */
+export function extractSection(tags: string[]): string | undefined {
+  const sectionTag = tags.find((t) => t.startsWith(TAG_SECTION_PREFIX));
+  return sectionTag?.slice(TAG_SECTION_PREFIX.length);
 }
 
 /**
  * Construct the public URL for an Elevio help center article.
  *
+ * Uses the article's tags to determine the section and the API-provided slug.
+ *
+ * Pattern: {helpCenterUrl}/{section}/articles/{id}-{slug}
+ *
  * The `helpCenterUrl` setting should be the base path up to (but not including)
- * `/articles/`. For example:
- *   - "https://www.tripadvisorsupport.com/en-US/hc/traveler"
- *   - "https://help.example.com/en"
+ * the section. For example: "https://www.tripadvisorsupport.com/en-US/hc"
  *
- * Pattern: {helpCenterUrl}/articles/{id}
- *
- * Returns empty string if helpCenterUrl is not configured.
+ * Returns empty string if helpCenterUrl is not configured or no section tag exists.
  */
 export function buildArticleUrl(
   helpCenterUrl: string | undefined,
   articleId: number,
-  _title: string,
+  slug: string,
+  tags: string[],
 ): string {
   if (!helpCenterUrl) {
     return "";
   }
 
+  const section = extractSection(tags);
+  if (!section) {
+    return "";
+  }
+
   const baseUrl = helpCenterUrl.replace(/\/$/, "");
-  return `${baseUrl}/articles/${articleId}`;
+  return `${baseUrl}/${section}/articles/${articleId}-${slug}`;
 }
