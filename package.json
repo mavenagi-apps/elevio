@@ -21,7 +21,7 @@
   "dependencies": {
     "@mavenagi/knowledge-converter": "^1.0.24",
     "bottleneck": "^2.19.5",
-    "inngest": "^3.51.0",
+    "inngest": "^3.54.0",
     "mavenagi": "1.2.6",
     "next": "^16.1.6",
     "react": "^19.2.4",
